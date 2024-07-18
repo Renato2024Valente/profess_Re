@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prova de Física</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #quiz-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 80%;
+            max-width: 800px;
+        }
+        .option {
+            display: block;
+            margin: 10px 0;
+            width: calc(100% - 20px);
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 16px;
+        }
+        .option:hover {
+            background-color: #0056b3;
+        }
+        #timer {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #question {
+            margin-bottom: 20px;
+        }
+        #intro, #quiz, #results, #unblock {
+            display: none;
+        }
+        input[type="text"], input[type="password"], input[type="number"], input[type="string"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="quiz-container">
+        <div id="intro">
+            <h2>Bem-vindo à Prova de Física</h2>
+            <p>Por favor, insira seu nome e série para começar.</p>
+            <input type="text" id="studentName" placeholder="Seu nome" required>
+            <input type="text" id="studentGrade" placeholder="Sua série (ex: 1ºA)" required>
+            <button onclick="startQuiz()">Começar Prova</button>
+        </div>
+        <div id="quiz">
+            <div id="timer">Tempo: 90.0 segundos</div>
+            <div id="question"></div>
+            <div id="options"></div>
+        </div>
+        <div id="results">
+            <h2>Prova finalizada!</h2>
+            <p id="studentInfo"></p>
+            <p id="score"></p>
+            <p id="grade"></p>
+            <p id="wrongAnswers"></p>
+            <button id="sendWhatsApp">Enviar Resultados pelo WhatsApp</button>
+        </div>
+        <div id="unblock">
+            <h2>Desbloquear Aluno</h2>
+            <p>Insira o nome do aluno e a senha para desbloquear.</p>
+            <input type="text" id="unblockStudentName" placeholder="Nome do aluno" required>
+            <input type="password" id="unblockPassword" placeholder="Senha" required>
+            <button onclick="unblockStudent()">Desbloquear</button>
+        </div>
+        <button onclick="showUnblock()">Desbloquear Aluno</button>
+    </div>
+    <script>
+        const professorPassword = "1234"; // Substitua pela senha desejada
+
+        let questions = [
+        { 
+            question: "Qual tag HTML é usada para criar um parágrafo?", 
+            options: ["<div>", "<span>", "<p>", "<section>"], 
+            answer: 2 
+        },
+        { 
+            question: "Como você aplica uma cor de fundo em CSS?", 
+            options: ["background-color: blue;", "color: blue;", "bgcolor: blue;", "background: blue;"], 
+            answer: 0 
+        },
+        { 
+            question: "Qual é a saída do seguinte código JavaScript: console.log(typeof []);", 
+            options: ["array", "object", "undefined", "null"], 
+            answer: 1 
+        },
+        { 
+            question: "Qual atributo HTML é usado para definir um identificador único para um elemento?", 
+            options: ["class", "id", "name", "unique"], 
+            answer: 1 
+        },
+        { 
+            question: "Como você seleciona um elemento com o id 'header' em CSS?", 
+            options: ["#header", ".header", "header", "id=header"], 
+            answer: 0 
+        },
+        { 
+            question: "Qual método JavaScript é usado para adicionar um novo elemento no final de um array?", 
+            options: ["add()", "push()", "append()", "insert()"], 
+            answer: 1 
+        },
+        { 
+            question: "Qual é a forma correta de vincular um arquivo CSS a um documento HTML?", 
+            options: ["<style src='styles.css'>", "<link href='styles.css'>", "<link rel='stylesheet' href='styles.css'>", "<stylesheet>styles.css</stylesheet>"], 
+            answer: 2 
+        },
+        { 
+            question: "Como você escreve um comentário em CSS?", 
+            options: ["// comentário", "/* comentário */", "<!-- comentário -->", "# comentário"], 
+            answer: 1 
+        },
+        { 
+            question: "Qual evento JavaScript é disparado quando um usuário clica em um elemento?", 
+            options: ["onmouseover", "onchange", "onclick", "onfocus"], 
+            answer: 2 
+        },
+        { 
+            question: "Qual é a saída do seguinte código JavaScript: console.log('5' + 5);", 
+            options: ["10", "'10'", "55", "'55'"], 
+            answer: 3 
+        }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let startTime;
+        let timerElement, questionElement, optionsElement;
+        let quizCompleted = false;
+        let currentStudentName = '';
+
+        function setup() {
+            noCanvas();
+            timerElement = select('#timer');
+            questionElement = select('#question');
+            optionsElement = select('#options');
+            select('#intro').show();
+        }
+
+        function startQuiz() {
+            const name = select('#studentName').value();
+            const grade = select('#studentGrade').value();
+            currentStudentName = name;
+            let blockedStudents = JSON.parse(localStorage.getItem('blockedStudents')) || [];
+            if (blockedStudents.includes(name)) {
+                alert('Você já completou esta prova e está bloqueado para refazê-la.');
+                return;
+            }
+            if (name && grade) {
+                select('#intro').hide();
+                select('#quiz').show();
+                startTime = millis();
+                nextQuestion();
+            } else {
+                alert('Por favor, insira seu nome e série.');
+            }
+        }
+
+        function draw() {
+            if (select('#quiz').style('display') !== 'none') {
+                let timeLeft = 90 - (millis() - startTime) / 1000;
+                if (timeLeft <= 0 && !quizCompleted) {
+                    quizCompleted = true;
+                    showResults();
+                } else if (timeLeft > 0) {
+                    timerElement.html(`Tempo: ${timeLeft.toFixed(1)} segundos`);
+                }
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestion < questions.length && !quizCompleted) {
+                startTime = millis();
+                let q = questions[currentQuestion];
+                questionElement.html(`Questão ${currentQuestion + 1}: ${q.question}`);
+                optionsElement.html('');
+                for (let i = 0; i < q.options.length; i++) {
+                    let btn = createButton(q.options[i]).class('option').parent(optionsElement);
+                    btn.mousePressed(() => checkAnswer(i));
+                }
+                currentQuestion++;
+            } else {
+                showResults();
+            }
+        }
+
+        function checkAnswer(i) {
+            if (i === questions[currentQuestion - 1].answer) {
+                score++;
+            }
+            nextQuestion();
+        }
+
+        function showResults() {
+            let gradeValue = (score / questions.length) * 10;
+            let wrongAnswers = questions.length - score;
+            const name = select('#studentName').value();
+            const grade = select('#studentGrade').value();
+
+            select('#quiz').hide();
+            select('#results').show();
+            select('#studentInfo').html(`Nome: ${name} - Série: ${grade}`);
+            select('#score').html(`Pontuação: ${score}/${questions.length}`);
+            select('#grade').html(`Nota: ${gradeValue.toFixed(2)}`);
+            select('#wrongAnswers').html(`Quantidade de erradas: ${wrongAnswers}`);
+
+            let blockedStudents = JSON.parse(localStorage.getItem('blockedStudents')) || [];
+            blockedStudents.push(name);
+            localStorage.setItem('blockedStudents', JSON.stringify(blockedStudents));
+
+            select('#sendWhatsApp').mousePressed(() => {
+                html2canvas(document.querySelector("#results")).then(canvas => {
+                    let imgData = canvas.toDataURL("image/jpeg");
+
+                    let link = document.createElement('a');
+                    link.download = 'resultados-prova.jpg';
+                    link.href = imgData;
+                    link.click();
+
+                    const message = `Resultados da prova:\nNome: ${name}\nSérie: ${grade}\nPontuação: ${score}/${questions.length}\nNota: ${gradeValue.toFixed(2)}\nQuantidade de erradas: ${wrongAnswers}`;
+                    const whatsappUrl = `https://api.whatsapp.com/send?phone=5514991016098&text=${encodeURIComponent(message)}`;
+                    window.open(whatsappUrl, '_blank');
+                });
+            });
+
+            localStorage.setItem('quizTaken', 'true');
+        }
+
+        function showUnblock() {
+            select('#unblock').show();
+        }
+
+        function unblockStudent() {
+            const name = select('#unblockStudentName').value();
+            const password = select('#unblockPassword').value();
+            if (password === professorPassword) {
+                let blockedStudents = JSON.parse(localStorage.getItem('blockedStudents')) || [];
+                blockedStudents = blockedStudents.filter(student => student !== name);
+                localStorage.setItem('blockedStudents', JSON.stringify(blockedStudents));
+                alert(`O aluno ${name} foi desbloqueado.`);
+            } else {
+                alert('Senha incorreta.');
+            }
+        }
+    </script>
+</body>
+</html>
